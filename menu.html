@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>odyssey.cc</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent:    #b08ef4;
+    --accent-hi: #d6c2fa;
+    --accent-lo: #6a5592;
+    --text:      #e2e2e2;
+    --dim:       #8a8a8a;
+    --border:    #3e3e3e;
+    --panel:     #202020;
+    --panel2:    #191919;
+    --bg:        #090909;
+    --green:     #4caf50;
+    --red:       #f44336;
+    --orange:    #ff9800;
+    --blue:      #64b5f6;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', 'Cascadia Mono', Consolas, 'Courier New', monospace;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── BOOT OVERLAY ── */
+  #boot {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 100;
+    transition: opacity 0.6s ease;
+  }
+  #boot.hidden { opacity: 0; pointer-events: none; }
+
+  #boot-logo {
+    font-size: 11px; color: var(--dim); letter-spacing: 2px;
+    margin-bottom: 32px; text-transform: uppercase;
+  }
+
+  #boot-title {
+    font-size: 48px; font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    text-shadow: 0 0 40px rgba(176,142,244,0.5);
+    animation: flicker 3s ease-in-out infinite;
+  }
+
+  #boot-sub {
+    font-size: 11px; color: var(--dim);
+    letter-spacing: 4px; margin-bottom: 48px;
+  }
+
+  #boot-status {
+    font-size: 11px; color: var(--accent-lo);
+    letter-spacing: 1px; margin-bottom: 20px;
+    min-height: 16px;
+  }
+
+  #boot-bar-wrap {
+    width: 280px; height: 1px;
+    background: var(--border);
+    position: relative;
+    overflow: visible;
+  }
+  #boot-bar {
+    height: 1px; background: var(--accent);
+    width: 0%;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  @keyframes flicker {
+    0%,100% { opacity: 1; }
+    92% { opacity: 1; }
+    93% { opacity: 0.7; }
+    94% { opacity: 1; }
+    96% { opacity: 0.85; }
+    97% { opacity: 1; }
+  }
+
+  /* ── SCAN LINES ── */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  #app {
+    display: flex; height: 100vh; width: 100vw;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  #app.visible { opacity: 1; }
+
+  /* ── HEADER BAR ── */
+  #header {
+    position: fixed; top: 0; left: 0; right: 0; height: 36px;
+    background: var(--panel2);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px;
+    z-index: 50;
+    -webkit-app-region: drag;
+  }
+  .header-brand {
+    font-size: 11px; font-weight: 700;
+    color: var(--accent); letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .header-brand b { color: var(--dim); font-weight: 400; }
+  .header-right {
+    display: flex; align-items: center; gap: 20px;
+    font-size: 10px; color: var(--dim);
+    -webkit-app-region: no-drag;
+  }
+  .status-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--green);
+    display: inline-block;
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse-dot 2s ease-in-out infinite;
+    margin-right: 5px;
+  }
+  @keyframes pulse-dot {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 200px; min-width: 200px;
+    background: var(--panel2);
+    border-right: 1px solid var(--border);
+    padding-top: 36px;
+    display: flex; flex-direction: column;
+    flex-shrink: 0;
+  }
+
+  .sidebar-section {
+    padding: 20px 0 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-section:last-child { border-bottom: none; }
+
+  .sidebar-section-label {
+    font-size: 9px; color: var(--accent-lo);
+    letter-spacing: 2px; text-transform: uppercase;
+    padding: 0 16px; margin-bottom: 6px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 16px; cursor: pointer;
+    font-size: 11px; color: var(--dim);
+    border-left: 2px solid transparent;
+    transition: all 0.15s ease;
+    position: relative;
+  }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .nav-item.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: rgba(176,142,244,0.07);
+  }
+  .nav-item .nav-icon {
+    width: 14px; text-align: center;
+    font-size: 12px; opacity: 0.7;
+  }
+  .nav-item.active .nav-icon { opacity: 1; }
+
+  .nav-badge {
+    margin-left: auto;
+    font-size: 8px; color: var(--accent);
+    background: rgba(176,142,244,0.15);
+    border: 1px solid var(--accent-lo);
+    padding: 1px 5px; border-radius: 2px;
+    letter-spacing: 1px;
+  }
+
+  .sidebar-bottom {
+    margin-top: auto;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 10px; color: var(--dim);
+  }
+  .sidebar-bottom .user-name { color: var(--text); font-size: 11px; margin-bottom: 2px; }
+  .sidebar-bottom .user-rank { color: var(--accent-lo); }
+
+  /* ── CONTENT ── */
+  #content {
+    flex: 1; padding-top: 36px;
+    overflow-y: auto; overflow-x: hidden;
+    background: var(--bg);
+  }
+
+  .page { display: none; padding: 24px; }
+  .page.active { display: block; }
+
+  .page-header {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 24px; padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .page-title {
+    font-size: 14px; font-weight: 700;
+    color: var(--text); letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .page-sub { font-size: 10px; color: var(--dim); letter-spacing: 1px; }
+
+  /* ── COLUMNS ── */
+  .cols { display: flex; gap: 16px; }
+  .col { flex: 1; }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-size: 10px; color: var(--accent);
+    letter-spacing: 2px; text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title::after {
+    content: ''; flex: 1; height: 1px;
+    background: var(--border);
+  }
+
+  /* ── TOGGLE ── */
+  .toggle-row {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(62,62,62,0.5);
+    font-size: 11px; color: var(--dim);
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-row:hover { color: var(--text); }
+  .toggle-row.on { color: var(--text); }
+
+  .toggle-label { display: flex; align-items: center; gap: 8px; }
+  .toggle-key {
+    font-size: 9px; color: var(--accent-lo);
+    background: rgba(176,142,244,0.1);
+    border: 1px solid var(--accent-lo);
+    padding: 1px 5px; border-radius: 2px;
+    min-width: 28px; text-align: center;
+  }
+  .toggle-pill {
+    width: 28px; height: 14px; border-radius: 7px;
+    background: var(--border); position: relative;
+    transition: background 0.2s ease; flex-shrink: 0;
+  }
+  .toggle-pill::after {
+    content: ''; position: absolute;
+    top: 2px; left: 2px;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--dim);
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .toggle-row.on .toggle-pill { background: rgba(176,142,244,0.3); }
+  .toggle-row.on .toggle-pill::after {
+    transform: translateX(14px);
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+  }
+
+  /* ── SLIDER ── */
+  .slider-row {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(62,62,62,0.5);
+    font-size: 11px; color: var(--dim);
+  }
+  .slider-row:last-child { border-bottom: none; }
+  .slider-header {
+    display: flex; justify-content: space-between; margin-bottom: 8px;
+  }
+  .slider-val { color: var(--accent); font-size: 11px; }
+  input[type=range] {
+    -webkit-appearance: none; width: 100%; height: 2px;
+    background: var(--border); outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    cursor: pointer;
+  }
+
+  /* ── COLOR PICK ── */
+  .color-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 0; border-bottom: 1px solid rgba(62,62,62,0.5);
+    font-size: 11px; color: var(--dim);
+  }
+  .color-row:last-child { border-bottom: none; }
+  .color-swatches { display: flex; gap: 6px; }
+  .swatch {
+    width: 14px; height: 14px; border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.1);
+    cursor: pointer; transition: transform 0.15s;
+  }
+  .swatch:hover { transform: scale(1.3); }
+  .swatch.active { border-color: white; transform: scale(1.3); }
+
+  /* ── STAT GRID ── */
+  .stat-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; margin-top: 8px;
+  }
+  .stat-box {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+  }
+  .stat-label { font-size: 9px; color: var(--dim); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  .stat-val { font-size: 18px; font-weight: 700; color: var(--accent); }
+  .stat-unit { font-size: 9px; color: var(--dim); }
+
+  /* ── MEMBERS LIST ── */
+  .member-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid rgba(62,62,62,0.4);
+    font-size: 11px;
+  }
+  .member-row:last-child { border-bottom: none; }
+  .member-avatar {
+    width: 24px; height: 24px; border-radius: 2px;
+    background: var(--panel2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: var(--accent);
+  }
+  .member-name { flex: 1; color: var(--text); }
+  .member-rank { font-size: 9px; color: var(--accent-lo); }
+  .member-status { font-size: 9px; padding: 1px 6px; border-radius: 2px; }
+  .member-status.online { color: var(--green); background: rgba(76,175,80,0.1); border: 1px solid rgba(76,175,80,0.3); }
+  .member-status.offline { color: var(--dim); background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+
+  /* ── LOG ── */
+  .log-box {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    padding: 10px; height: 160px; overflow-y: auto;
+    font-size: 10px; line-height: 1.8;
+  }
+  .log-line { display: flex; gap: 8px; }
+  .log-time { color: var(--dim); flex-shrink: 0; }
+  .log-ok   { color: var(--green); }
+  .log-warn { color: var(--orange); }
+  .log-info { color: var(--blue); }
+  .log-err  { color: var(--red); }
+
+  /* ── DOWNLOAD BTN ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 20px; cursor: pointer;
+    font-family: inherit; font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; border: none; outline: none;
+    transition: all 0.15s ease;
+  }
+  .btn-primary {
+    background: rgba(176,142,244,0.15);
+    border: 1px solid var(--accent-lo);
+    color: var(--accent);
+  }
+  .btn-primary:hover {
+    background: rgba(176,142,244,0.25);
+    border-color: var(--accent);
+    box-shadow: 0 0 16px rgba(176,142,244,0.2);
+  }
+  .btn-danger {
+    background: rgba(244,67,54,0.1);
+    border: 1px solid rgba(244,67,54,0.4);
+    color: var(--red);
+  }
+  .btn-danger:hover { background: rgba(244,67,54,0.2); }
+
+  /* ── NOTIFICATION TOAST ── */
+  #toast {
+    position: fixed; bottom: 20px; right: 20px;
+    background: var(--panel);
+    border: 1px solid var(--accent-lo);
+    border-left: 3px solid var(--accent);
+    padding: 10px 16px;
+    font-size: 11px; color: var(--text);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 200;
+    min-width: 200px;
+  }
+  #toast.show { opacity: 1; }
+
+  /* ── OVERVIEW PREVIEW ── */
+  .preview-screen {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    aspect-ratio: 16/9;
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px;
+  }
+  .preview-label {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    font-size: 9px; color: var(--dim); letter-spacing: 1px;
+    padding: 6px 10px; background: rgba(0,0,0,0.6);
+    text-transform: uppercase;
+  }
+
+  /* ESP preview canvas */
+  #esp-preview { width: 100%; height: 100%; display: block; }
+
+  /* ── CUSTOM SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+</style>
+</head>
+<body>
+
+<!-- BOOT SCREEN -->
+<div id="boot">
+  <div id="boot-logo">odyssey software</div>
+  <div id="boot-title">ODYSSEY</div>
+  <div id="boot-sub">.cc &nbsp;/&nbsp; invite only</div>
+  <div id="boot-status">Initializing...</div>
+  <div id="boot-bar-wrap">
+    <div id="boot-bar"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+
+  <!-- HEADER -->
+  <div id="header">
+    <div class="header-brand">odyssey<b>.cc</b></div>
+    <div class="header-right">
+      <span><span class="status-dot"></span>CONNECTED</span>
+      <span id="header-user">Member#0001</span>
+      <span id="header-time">00:00:00</span>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Overview</div>
+      <div class="nav-item active" data-page="overview">
+        <span class="nav-icon">◈</span> Dashboard
+      </div>
+      <div class="nav-item" data-page="download">
+        <span class="nav-icon">↓</span> Download
+        <span class="nav-badge">NEW</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Features</div>
+      <div class="nav-item" data-page="aimbot">
+        <span class="nav-icon">◎</span> Aimbot
+      </div>
+      <div class="nav-item" data-page="visuals">
+        <span class="nav-icon">◇</span> Visuals / ESP
+      </div>
+      <div class="nav-item" data-page="misc">
+        <span class="nav-icon">≡</span> Misc
+      </div>
+      <div class="nav-item" data-page="skins">
+        <span class="nav-icon">◈</span> Skins
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Account</div>
+      <div class="nav-item" data-page="members">
+        <span class="nav-icon">◦</span> Members
+      </div>
+      <div class="nav-item" data-page="settings">
+        <span class="nav-icon">⊕</span> Settings
+      </div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="user-name" id="sidebar-user">Member</div>
+      <div class="user-rank">VIP · odyssey.cc</div>
+    </div>
+  </div>
+
+  <!-- CONTENT AREA -->
+  <div id="content">
+
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-overview">
+      <div class="page-header">
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">System Status</div>
+      </div>
+      <div class="cols">
+        <div class="col">
+          <div class="card">
+            <div class="card-title">Status</div>
+            <div class="stat-grid">
+              <div class="stat-box">
+                <div class="stat-label">Version</div>
+                <div class="stat-val" style="font-size:13px">v2.4.1</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Injection</div>
+                <div class="stat-val" style="font-size:13px;color:var(--green)">OK</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Bypass</div>
+                <div class="stat-val" style="font-size:13px;color:var(--green)">ACTIVE</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Uptime</div>
+                <div class="stat-val" style="font-size:13px" id="uptime-val">0:00</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">System Log</div>
+            <div class="log-box" id="log-box">
+              <div class="log-line"><span class="log-time">00:00:01</span><span class="log-ok">[ OK ]</span><span>Driver loaded successfully</span></div>
+              <div class="log-line"><span class="log-time">00:00:01</span><span class="log-ok">[ OK ]</span><span>Bypass module initialized</span></div>
+              <div class="log-line"><span class="log-time">00:00:02</span><span class="log-info">[INFO]</span><span>Hooking render pipeline...</span></div>
+              <div class="log-line"><span class="log-time">00:00:02</span><span class="log-ok">[ OK ]</span><span>ESP overlay attached</span></div>
+              <div class="log-line"><span class="log-time">00:00:02</span><span class="log-ok">[ OK ]</span><span>Aimbot thread started</span></div>
+              <div class="log-line"><span class="log-time">00:00:03</span><span class="log-info">[INFO]</span><span>Fetching entity list...</span></div>
+              <div class="log-line"><span class="log-time">00:00:03</span><span class="log-ok">[ OK ]</span><span>Odyssey.cc ready</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card">
+            <div class="card-title">ESP Preview</div>
+            <div class="preview-screen">
+              <canvas id="esp-preview"></canvas>
+              <div class="preview-label">Simulated overlay · for display only</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Quick Toggles</div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label"><span class="nav-icon">◎</span> Aimbot <span class="toggle-key">F1</span></div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label"><span class="nav-icon">◇</span> ESP Boxes <span class="toggle-key">F2</span></div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)">
+              <div class="toggle-label"><span class="nav-icon">≡</span> Radar Hack <span class="toggle-key">F3</span></div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label"><span class="nav-icon">◦</span> Bhop <span class="toggle-key">F4</span></div>
+              <div class="toggle-pill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AIMBOT -->
+    <div class="page" id="page-aimbot">
+      <div class="page-header">
+        <div class="page-title">Aimbot</div>
+        <div class="page-sub">Target Acquisition</div>
+      </div>
+      <div class="cols">
+        <div class="col">
+          <div class="card">
+            <div class="card-title">General</div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Enable Aimbot <span class="toggle-key">F1</span></div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Silent Aim</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)">
+              <div class="toggle-label">Triggerbot</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Auto Fire</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)">
+              <div class="toggle-label">Backstab Only</div>
+              <div class="toggle-pill"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Target Priority</div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Nearest to Crosshair</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)">
+              <div class="toggle-label">Lowest HP First</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)">
+              <div class="toggle-label">Nearest Distance</div>
+              <div class="toggle-pill"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card">
+            <div class="card-title">Settings</div>
+            <div class="slider-row">
+              <div class="slider-header"><span>FOV</span><span class="slider-val" id="v-fov">12</span></div>
+              <input type="range" min="1" max="90" value="12" oninput="document.getElementById('v-fov').textContent=this.value">
+            </div>
+            <div class="slider-row">
+              <div class="slider-header"><span>Smoothing</span><span class="slider-val" id="v-smooth">4.5</span></div>
+              <input type="range" min="1" max="20" value="9" step="0.5"
+                oninput="document.getElementById('v-smooth').textContent=(this.value/2).toFixed(1)">
+            </div>
+            <div class="slider-row">
+              <div class="slider-header"><span>RCS Horizontal</span><span class="slider-val" id="v-rcsh">75</span>%</div>
+              <input type="range" min="0" max="100" value="75" oninput="document.getElementById('v-rcsh').textContent=this.value">
+            </div>
+            <div class="slider-row">
+              <div class="slider-header"><span>RCS Vertical</span><span class="slider-val" id="v-rcsv">60</span>%</div>
+              <input type="range" min="0" max="100" value="60" oninput="document.getElementById('v-rcsv').textContent=this.value">
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Bone Target</div>
+            <div class="toggle-row on" onclick="selectBone(this,'head')">
+              <div class="toggle-label">Head</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="selectBone(this,'neck')">
+              <div class="toggle-label">Neck</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="selectBone(this,'chest')">
+              <div class="toggle-label">Chest</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="selectBone(this,'pelvis')">
+              <div class="toggle-label">Pelvis</div>
+              <div class="toggle-pill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VISUALS -->
+    <div class="page" id="page-visuals">
+      <div class="page-header">
+        <div class="page-title">Visuals / ESP</div>
+        <div class="page-sub">Extra Sensory Perception</div>
+      </div>
+      <div class="cols">
+        <div class="col">
+          <div class="card">
+            <div class="card-title">Boxes</div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Enemy Boxes <span class="toggle-key">F2</span></div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)">
+              <div class="toggle-label">Team Boxes</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Box Fill (alpha)</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Corner Style</div>
+              <div class="toggle-pill"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Info Tags</div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Name</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">HP Bar</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)">
+              <div class="toggle-label">Armor Bar</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Weapon Icon</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)">
+              <div class="toggle-label">Distance</div>
+              <div class="toggle-pill"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card">
+            <div class="card-title">Colors</div>
+            <div class="color-row">
+              <span>Enemy</span>
+              <div class="color-swatches">
+                <div class="swatch active" style="background:#f44336" title="Red"></div>
+                <div class="swatch" style="background:#ff9800" title="Orange"></div>
+                <div class="swatch" style="background:#ffeb3b" title="Yellow"></div>
+                <div class="swatch" style="background:#b08ef4" title="Purple"></div>
+                <div class="swatch" style="background:#e2e2e2" title="White"></div>
+              </div>
+            </div>
+            <div class="color-row">
+              <span>Team</span>
+              <div class="color-swatches">
+                <div class="swatch" style="background:#f44336"></div>
+                <div class="swatch" style="background:#ff9800"></div>
+                <div class="swatch active" style="background:#4caf50"></div>
+                <div class="swatch" style="background:#64b5f6"></div>
+                <div class="swatch" style="background:#e2e2e2"></div>
+              </div>
+            </div>
+            <div class="color-row">
+              <span>Visible</span>
+              <div class="color-swatches">
+                <div class="swatch" style="background:#f44336"></div>
+                <div class="swatch active" style="background:#ff9800"></div>
+                <div class="swatch" style="background:#4caf50"></div>
+                <div class="swatch" style="background:#64b5f6"></div>
+                <div class="swatch" style="background:#b08ef4"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Other</div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Skeleton</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)">
+              <div class="toggle-label">Dropped Weapons</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)">
+              <div class="toggle-label">Bomb ESP</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Radar</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="slider-row">
+              <div class="slider-header"><span>Box Thickness</span><span class="slider-val" id="v-thick">1</span>px</div>
+              <input type="range" min="1" max="4" value="1" oninput="document.getElementById('v-thick').textContent=this.value">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MISC -->
+    <div class="page" id="page-misc">
+      <div class="page-header">
+        <div class="page-title">Misc</div>
+        <div class="page-sub">Movement & Utility</div>
+      </div>
+      <div class="cols">
+        <div class="col">
+          <div class="card">
+            <div class="card-title">Movement</div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Bhop <span class="toggle-key">F4</span></div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)">
+              <div class="toggle-label">Auto Strafe</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Velocity Spoof</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)">
+              <div class="toggle-label">Slide Walk</div>
+              <div class="toggle-pill"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Utility</div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Radar Hack</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)">
+              <div class="toggle-label">Rank Reveal</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)">
+              <div class="toggle-label">Auto Accept</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Clantag Spoof</div>
+              <div class="toggle-pill"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card">
+            <div class="card-title">Anti-Cheat Bypass</div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">VAC Bypass</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">OBS Bypass</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Screenshot Block</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Trusted Mode Spoof</div>
+              <div class="toggle-pill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SKINS -->
+    <div class="page" id="page-skins">
+      <div class="page-header">
+        <div class="page-title">Skins</div>
+        <div class="page-sub">Cosmetic Changer</div>
+      </div>
+      <div class="cols">
+        <div class="col">
+          <div class="card">
+            <div class="card-title">Knife</div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Enable Knife Changer</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="slider-row">
+              <div class="slider-header"><span>Knife Type</span><span class="slider-val" id="v-knife">Butterfly</span></div>
+            </div>
+            <div class="toggle-row" onclick="toggleMe(this)"><div class="toggle-label">Butterfly</div><div class="toggle-pill"></div></div>
+            <div class="toggle-row" onclick="toggleMe(this)"><div class="toggle-label">M9 Bayonet</div><div class="toggle-pill"></div></div>
+            <div class="toggle-row on" onclick="toggleMe(this)"><div class="toggle-label">Karambit</div><div class="toggle-pill"></div></div>
+            <div class="toggle-row" onclick="toggleMe(this)"><div class="toggle-label">Flip Knife</div><div class="toggle-pill"></div></div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card">
+            <div class="card-title">Gloves</div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Enable Glove Changer</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="toggle-row on" onclick="toggleMe(this)"><div class="toggle-label">Sport Gloves · Vice</div><div class="toggle-pill"></div></div>
+            <div class="toggle-row" onclick="toggleMe(this)"><div class="toggle-label">Specialist · Crimson Web</div><div class="toggle-pill"></div></div>
+            <div class="toggle-row" onclick="toggleMe(this)"><div class="toggle-label">Hand Wraps · Cobalt Skulls</div><div class="toggle-pill"></div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Agents</div>
+            <div class="toggle-row on" onclick="toggleMe(this)">
+              <div class="toggle-label">Enable Agent Changer</div>
+              <div class="toggle-pill"></div>
+            </div>
+            <div class="slider-row">
+              <div class="slider-header"><span>CT Agent</span><span class="slider-val" style="font-size:9px">SEAL Frogman</span></div>
+            </div>
+            <div class="slider-row">
+              <div class="slider-header"><span>T Agent</span><span class="slider-val" style="font-size:9px">The Doctor</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEMBERS -->
+    <div class="page" id="page-members">
+      <div class="page-header">
+        <div class="page-title">Members</div>
+        <div class="page-sub">Online Now</div>
+      </div>
+      <div class="card" style="max-width:500px">
+        <div class="card-title">Active Users</div>
+        <div class="member-row">
+          <div class="member-avatar">A</div>
+          <div>
+            <div class="member-name">axiom</div>
+            <div class="member-rank">Owner</div>
+          </div>
+          <div class="member-status online">online</div>
+        </div>
+        <div class="member-row">
+          <div class="member-avatar">s</div>
+          <div>
+            <div class="member-name">solaris</div>
+            <div class="member-rank">Dev</div>
+          </div>
+          <div class="member-status online">online</div>
+        </div>
+        <div class="member-row">
+          <div class="member-avatar" id="user-avatar-box">?</div>
+          <div>
+            <div class="member-name" id="members-username">you</div>
+            <div class="member-rank">VIP</div>
+          </div>
+          <div class="member-status online">online</div>
+        </div>
+        <div class="member-row">
+          <div class="member-avatar">r</div>
+          <div>
+            <div class="member-name">reaper</div>
+            <div class="member-rank">Member</div>
+          </div>
+          <div class="member-status offline">offline</div>
+        </div>
+        <div class="member-row">
+          <div class="member-avatar">v</div>
+          <div>
+            <div class="member-name">void_x</div>
+            <div class="member-rank">Member</div>
+          </div>
+          <div class="member-status offline">offline</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DOWNLOAD -->
+    <div class="page" id="page-download">
+      <div class="page-header">
+        <div class="page-title">Download</div>
+        <div class="page-sub">Client Loader</div>
+      </div>
+      <div style="max-width:480px">
+        <div class="card">
+          <div class="card-title">Latest Release</div>
+          <div class="stat-grid" style="margin-bottom:16px">
+            <div class="stat-box">
+              <div class="stat-label">Version</div>
+              <div class="stat-val" style="font-size:14px">v2.4.1</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Status</div>
+              <div class="stat-val" style="font-size:14px;color:var(--green)">UD</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="showToast('Downloading odyssey-loader.exe...')">
+            ↓ &nbsp; Download Loader
+          </button>
+        </div>
+        <div class="card">
+          <div class="card-title">Instructions</div>
+          <div style="font-size:11px; color:var(--dim); line-height:2">
+            <div>1. Disable Windows Defender before injecting</div>
+            <div>2. Launch CS2 in trusted mode off</div>
+            <div>3. Run odyssey-loader.exe as administrator</div>
+            <div>4. Wait for injection confirmation</div>
+            <div>5. Press INS to open/close the menu in-game</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="page-header">
+        <div class="page-title">Settings</div>
+        <div class="page-sub">Application</div>
+      </div>
+      <div style="max-width:500px">
+        <div class="card">
+          <div class="card-title">Menu</div>
+          <div class="toggle-row on" onclick="toggleMe(this)">
+            <div class="toggle-label">Dark Theme</div>
+            <div class="toggle-pill"></div>
+          </div>
+          <div class="toggle-row" onclick="toggleMe(this)">
+            <div class="toggle-label">Sounds</div>
+            <div class="toggle-pill"></div>
+          </div>
+          <div class="slider-row">
+            <div class="slider-header"><span>Menu Key</span><span class="slider-val">INS</span></div>
+          </div>
+          <div class="slider-row">
+            <div class="slider-header"><span>Menu Opacity</span><span class="slider-val" id="v-opacity">90</span>%</div>
+            <input type="range" min="50" max="100" value="90" oninput="document.getElementById('v-opacity').textContent=this.value">
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Account</div>
+          <div style="font-size:11px; color:var(--dim); line-height:2.2; margin-bottom:12px">
+            <div>Username: <span style="color:var(--text)" id="settings-user">Member</span></div>
+            <div>Rank: <span style="color:var(--accent)">VIP</span></div>
+            <div>Subscription: <span style="color:var(--green)">Active · No Expiry</span></div>
+            <div>Invite Code: <span style="color:var(--dim)">ODYSSEY-DEMO-2026</span></div>
+          </div>
+          <button class="btn btn-danger" onclick="showToast('Logged out.')">Sign Out</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<div id="toast"></div>
+
+<script>
+// ── BOOT SEQUENCE ─────────────────────────────────────────────────────────────
+const bootMessages = [
+  'Loading kernel driver...',
+  'Initializing bypass module...',
+  'Connecting to license server...',
+  'Verifying subscription...',
+  'Attaching ESP renderer...',
+  'Starting aimbot thread...',
+  'Ready.',
+];
+const bootBar = document.getElementById('boot-bar');
+const bootStatus = document.getElementById('boot-status');
+let step = 0;
+const totalDuration = 2800;
+const stepDuration = totalDuration / bootMessages.length;
+
+function runBoot() {
+  if (step >= bootMessages.length) {
+    bootStatus.textContent = '✓ All systems nominal';
+    bootBar.style.width = '100%';
+    setTimeout(() => {
+      document.getElementById('boot').classList.add('hidden');
+      document.getElementById('app').classList.add('visible');
+      startESPPreview();
+    }, 500);
+    return;
+  }
+  bootStatus.textContent = bootMessages[step];
+  bootBar.style.width = ((step + 1) / bootMessages.length * 100) + '%';
+  step++;
+  setTimeout(runBoot, stepDuration + (Math.random() * 100 - 50));
+}
+setTimeout(runBoot, 300);
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('header-time').textContent =
+    now.toTimeString().slice(0, 8);
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── UPTIME ───────────────────────────────────────────────────────────────────
+let startTime = Date.now();
+setInterval(() => {
+  const s = Math.floor((Date.now() - startTime) / 1000);
+  document.getElementById('uptime-val').textContent =
+    Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+}, 1000);
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    const page = document.getElementById('page-' + item.dataset.page);
+    if (page) page.classList.add('active');
+  });
+});
+
+// ── TOGGLES ──────────────────────────────────────────────────────────────────
+function toggleMe(el) {
+  el.classList.toggle('on');
+}
+function selectBone(el) {
+  el.closest('.card').querySelectorAll('.toggle-row').forEach(r => r.classList.remove('on'));
+  el.classList.add('on');
+}
+
+// ── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── SWATCH SELECTION ─────────────────────────────────────────────────────────
+document.querySelectorAll('.color-swatches').forEach(group => {
+  group.querySelectorAll('.swatch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      group.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+      sw.classList.add('active');
+    });
+  });
+});
+
+// ── ESP PREVIEW CANVAS ───────────────────────────────────────────────────────
+function startESPPreview() {
+  const canvas = document.getElementById('esp-preview');
+  const parent = canvas.parentElement;
+  const ctx = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width  = parent.clientWidth;
+    canvas.height = parent.clientHeight;
+  }
+  resize();
+  new ResizeObserver(resize).observe(parent);
+
+  // Fake players
+  const players = [
+    { x: 0.25, y: 0.4, w: 0.08, h: 0.35, hp: 85, name: 'axiom',   color: '#f44336', visible: true  },
+    { x: 0.60, y: 0.3, w: 0.07, h: 0.38, hp: 32, name: 'void_x',  color: '#f44336', visible: false },
+    { x: 0.78, y: 0.45, w:0.06, h: 0.30, hp: 100,name: 'reaper',  color: '#ff9800', visible: true  },
+  ];
+
+  let frame = 0;
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0,0,W,H);
+
+    // dark background (simulated game)
+    ctx.fillStyle = '#0d0d0d';
+    ctx.fillRect(0,0,W,H);
+
+    // subtle grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    for (let x=0; x<W; x+=30) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y=0; y<H; y+=30) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+    // crosshair
+    const cx = W/2, cy = H/2;
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx-6,cy); ctx.lineTo(cx-2,cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx+2,cy); ctx.lineTo(cx+6,cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,cy-6); ctx.lineTo(cx,cy-2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,cy+2); ctx.lineTo(cx,cy+6); ctx.stroke();
+
+    // players
+    players.forEach(p => {
+      const px = p.x * W, py = p.y * H;
+      const pw = p.w * W, ph = p.h * H;
+
+      // slight float
+      const fy = Math.sin(frame * 0.03 + p.x * 10) * 2;
+
+      // box
+      const alpha = p.visible ? 1 : 0.4;
+      ctx.strokeStyle = p.color + (p.visible ? 'ff' : '66');
+      ctx.lineWidth = 1;
+      // corner style box
+      const cl = 6; // corner length
+      ctx.beginPath();
+      // TL
+      ctx.moveTo(px,py+fy+cl); ctx.lineTo(px,py+fy); ctx.lineTo(px+cl,py+fy);
+      // TR
+      ctx.moveTo(px+pw-cl,py+fy); ctx.lineTo(px+pw,py+fy); ctx.lineTo(px+pw,py+fy+cl);
+      // BR
+      ctx.moveTo(px+pw,py+ph+fy-cl); ctx.lineTo(px+pw,py+ph+fy); ctx.lineTo(px+pw-cl,py+ph+fy);
+      // BL
+      ctx.moveTo(px+cl,py+ph+fy); ctx.lineTo(px,py+ph+fy); ctx.lineTo(px,py+ph+fy-cl);
+      ctx.stroke();
+
+      // fill
+      ctx.fillStyle = p.color + '11';
+      ctx.fillRect(px,py+fy,pw,ph);
+
+      // hp bar
+      const barW = 3, barX = px - barW - 2;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(barX, py+fy, barW, ph);
+      const hpH = (p.hp/100) * ph;
+      const hpColor = p.hp > 60 ? '#4caf50' : p.hp > 30 ? '#ff9800' : '#f44336';
+      ctx.fillStyle = hpColor;
+      ctx.fillRect(barX, py+fy + (ph - hpH), barW, hpH);
+
+      // name tag
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(px, py+fy-14, pw, 12);
+      ctx.fillStyle = '#e2e2e2';
+      ctx.font = '8px JetBrains Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(p.name + ' [' + p.hp + ']', px + pw/2, py+fy-5);
+    });
+
+    // scan line sweep
+    const scanY = (frame * 2) % H;
+    const grad = ctx.createLinearGradient(0, scanY-20, 0, scanY+2);
+    grad.addColorStop(0, 'rgba(176,142,244,0)');
+    grad.addColorStop(1, 'rgba(176,142,244,0.08)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, scanY-20, W, 22);
+
+    // watermark
+    ctx.fillStyle = 'rgba(176,142,244,0.4)';
+    ctx.font = '8px JetBrains Mono, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('odyssey.cc v2.4.1', 6, H - 6);
+
+    frame++;
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ── SET USERNAME ──────────────────────────────────────────────────────────────
+// Pull from URL param if available (e.g. ?user=axiom)
+(function() {
+  const params = new URLSearchParams(location.search);
+  const name = params.get('user') || 'Member';
+  document.getElementById('header-user').textContent = name + '#' + String(Math.floor(Math.random()*9000+1000));
+  document.getElementById('sidebar-user').textContent = name;
+  document.getElementById('members-username').textContent = name;
+  const av = document.getElementById('user-avatar-box');
+  if (av) av.textContent = name[0].toUpperCase();
+  ['settings-user'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = name;
+  });
+})();
+</script>
+</body>
+</html>
+

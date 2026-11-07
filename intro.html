@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>odyssey.cc</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #090909;
+    overflow: hidden;
+    font-family: 'JetBrains Mono', 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  }
+
+  /* Full-screen video layer */
+  #video-wrap {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #090909;
+    z-index: 10;
+    transition: opacity 0.6s ease;
+  }
+  #video-wrap.fade-out { opacity: 0; pointer-events: none; }
+
+  #eye-video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+
+  /* Skip hint */
+  #skip-hint {
+    position: fixed; bottom: 24px; right: 24px;
+    font-size: 10px; color: rgba(176,142,244,0.4);
+    letter-spacing: 2px; text-transform: uppercase;
+    z-index: 20;
+    animation: blink-hint 2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes blink-hint {
+    0%,100%{ opacity:0.4; } 50%{ opacity:0.15; }
+  }
+
+  /* Brand animation mounts here via Paranoia.intro() — it creates its own overlay */
+</style>
+</head>
+<body>
+
+<!-- Phase 1: MP4 Eye Video -->
+<div id="video-wrap">
+  <video id="eye-video"
+    src="/brand/intro-eye.mp4"
+    autoplay muted playsinline
+    preload="auto"
+    aria-label="odyssey.cc intro">
+  </video>
+</div>
+
+<div id="skip-hint">CLICK TO SKIP</div>
+
+<!-- Phase 2: Brand canvas animation (paranoia-brand.js) -->
+<script src="/brand/paranoia-brand.js"></script>
+<script>
+(function () {
+  var video    = document.getElementById('eye-video');
+  var videoWrap = document.getElementById('video-wrap');
+  var skipHint = document.getElementById('skip-hint');
+  var done     = false;
+
+  function goToMenu() {
+    if (done) return;
+    done = true;
+    // small delay so the brand animation can fully fade out
+    window.location.replace('/menu');
+  }
+
+  function runBrandAnimation() {
+    // Fade out the video overlay
+    videoWrap.classList.add('fade-out');
+    skipHint.style.display = 'none';
+
+    setTimeout(function () {
+      videoWrap.style.display = 'none';
+      // Run the odyssey.cc brand intro animation (canvas, no video)
+      if (window.Paranoia && Paranoia.intro) {
+        Paranoia.intro({ variant: 'eye', skippable: true })
+          .then(goToMenu);
+      } else {
+        // brand JS failed to load – go straight to menu
+        goToMenu();
+      }
+    }, 600);
+  }
+
+  // ── Video ended normally ──────────────────────────────────────────────────
+  video.addEventListener('ended', runBrandAnimation);
+
+  // ── Video failed to load / 404 ───────────────────────────────────────────
+  video.addEventListener('error', function () {
+    console.warn('[odyssey] video load failed – skipping to brand anim');
+    runBrandAnimation();
+  });
+
+  // ── Click anywhere to skip the video ─────────────────────────────────────
+  document.addEventListener('click', function onSkip() {
+    document.removeEventListener('click', onSkip);
+    if (!video.ended && !done) {
+      video.pause();
+      runBrandAnimation();
+    }
+  });
+
+  // ── Keyboard skip ─────────────────────────────────────────────────────────
+  document.addEventListener('keydown', function onKey(ev) {
+    if (ev.key === 'Escape' || ev.key === ' ' || ev.key === 'Enter') {
+      document.removeEventListener('keydown', onKey);
+      if (!video.ended && !done) {
+        video.pause();
+        runBrandAnimation();
+      }
+    }
+  });
+
+  // ── Fallback: if video stalls for >8s, move on ───────────────────────────
+  setTimeout(function () {
+    if (!done) runBrandAnimation();
+  }, 8000);
+})();
+</script>
+</body>
+</html>
+
